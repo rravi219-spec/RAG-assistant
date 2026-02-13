@@ -721,7 +721,7 @@ print("TASK 6: Constructing QA Bot with Hugging Face LLM")
 print("=" * 70)
 
 from langchain_community.llms import HuggingFaceHub
-from langchain.chains import RetrievalQA
+from langchain_classic.chains import RetrievalQA
 from langchain_core.prompts import PromptTemplate
 
 # Initialize Hugging Face LLM

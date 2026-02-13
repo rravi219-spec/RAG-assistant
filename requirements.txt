@@ -1,0 +1,26 @@
+# Quest Analytics RAG Assistant - Required Packages
+# Install with: pip install -r requirements.txt --break-system-packages
+
+# Core LangChain
+langchain>=0.1.0
+langchain-community>=0.0.20
+langchain-core>=0.1.0
+
+# Vector Database
+chromadb>=0.4.22
+
+# Embeddings
+sentence-transformers>=2.2.2
+
+# LLM Integration
+huggingface-hub>=0.20.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# Visualization
+matplotlib>=3.7.0
+numpy>=1.24.0
+
+# Optional: Pillow for image handling
+Pillow>=10.0.0

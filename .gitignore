@@ -1,0 +1,10 @@
+# Runtime artifacts
+chroma_db/
+pdfs/
+
+# Environment
+.env
+
+# Python
+__pycache__/
+*.pyc

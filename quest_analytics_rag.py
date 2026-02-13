@@ -1,19 +1,26 @@
 """
 Quest Analytics - AI-Powered RAG Assistant for Paper Summarization
 =================================================================
-PHASE 1 - DAY 1: Solid Foundation with Hugging Face Integration
+PHASE 1 + PHASE 2: Foundation + Storytelling Modes
 
 This script builds a complete RAG (Retrieval-Augmented Generation) pipeline
-using LangChain with a real LLM (Hugging Face) to read, understand, and 
+using LangChain with a real LLM (Hugging Face) to read, understand, and
 summarize research documents.
 
-NEW FEATURES (Phase 1):
+PHASE 1 FEATURES:
 - ✅ Hugging Face LLM integration (FLAN-T5)
 - ✅ Multi-PDF support (load multiple research papers)
 - ✅ Secure API key management (.env file)
 - ✅ Better source tracking (know which PDF answered)
 - ✅ Document library management
 - ✅ All 6 original tasks + screenshots preserved
+
+PHASE 2 FEATURES (Storytelling Modes):
+- ✅ Kid Mode (age 8-12): Simple words, fun analogies, adventure-like
+- ✅ Adult Mode: Real-life examples (Netflix, banking, etc.)
+- ✅ Story Mode: Narrative format with characters and plot
+- ✅ Mode comparison across same questions
+- ✅ Comparison screenshot generated
 
 Tasks:
 1. Load documents using LangChain (PDF loader) - MULTI-PDF SUPPORT
@@ -22,6 +29,7 @@ Tasks:
 4. Create and configure ChromaDB vector database
 5. Develop a retriever for document queries
 6. Construct a QA Bot using LangChain and Hugging Face LLM
+7. Storytelling Modes - Kid, Adult, Story (PHASE 2)
 """
 
 import os
@@ -943,34 +951,372 @@ plt.savefig(os.path.join(SCREENSHOTS_DIR, 'qabot.png'),
 plt.close()
 print(f"✅ Screenshot saved: {SCREENSHOTS_DIR}/qabot.png")
 
+# ============================================================
+# TASK 7: Storytelling Modes - Kid, Adult, Story (PHASE 2)
+# ============================================================
+print("\n" + "=" * 70)
+print("TASK 7: Storytelling Modes - Kid, Adult, Story (PHASE 2)")
+print("=" * 70)
+
+from langchain_core.language_models.llms import LLM as BaseLLMClass
+from typing import Any, Optional as Opt
+
+# --- Define 3 Storytelling Prompt Templates ---
+
+kid_prompt_template = """You are a friendly teacher explaining to an 8-12 year old kid.
+Use simple words, fun analogies, and make it feel like an adventure!
+Use examples kids understand (school, games, superheroes, toys).
+
+Context:
+{context}
+
+Question: {question}
+
+Fun and Simple Answer for Kids:"""
+
+adult_prompt_template = """You are a practical advisor using real-life examples.
+Relate concepts to everyday things like Netflix accounts, online banking,
+shopping websites, and social media privacy settings.
+
+Context:
+{context}
+
+Question: {question}
+
+Practical Answer with Real-Life Examples:"""
+
+story_prompt_template = """You are a storyteller explaining through narrative.
+Create a short story with characters, a setting, and a resolution.
+Use real historical context when possible.
+
+Context:
+{context}
+
+Question: {question}
+
+Story Answer:"""
+
+KID_PROMPT = PromptTemplate(
+    template=kid_prompt_template, input_variables=["context", "question"]
+)
+ADULT_PROMPT = PromptTemplate(
+    template=adult_prompt_template, input_variables=["context", "question"]
+)
+STORY_PROMPT = PromptTemplate(
+    template=story_prompt_template, input_variables=["context", "question"]
+)
+
+storytelling_modes_config = {
+    "Kid Mode": {"prompt": KID_PROMPT, "emoji": "🧒", "color": "#ff6b9d"},
+    "Adult Mode": {"prompt": ADULT_PROMPT, "emoji": "👔", "color": "#4ecdc4"},
+    "Story Mode": {"prompt": STORY_PROMPT, "emoji": "📖", "color": "#ffe66d"},
+}
+
+print("\n🎭 Storytelling Modes Configured:")
+for mode_name, config in storytelling_modes_config.items():
+    print(f"   {config['emoji']} {mode_name}")
+
+
+# --- Storytelling LLM Wrapper ---
+# When HuggingFace API works, prompt templates guide the model style.
+# When using ExtractiveSummaryLLM fallback, we post-process the output.
+
+class StorytellingLLM(BaseLLMClass):
+    """Wraps the base LLM with storytelling post-processing for fallback mode."""
+
+    base_llm: Any = None
+    mode: str = "adult"
+
+    @property
+    def _llm_type(self) -> str:
+        return f"storytelling-{self.mode}"
+
+    def _call(self, prompt: str, stop: Opt[list[str]] = None,
+              run_manager: Any = None, **kwargs) -> str:
+        raw_answer = self.base_llm._call(
+            prompt, stop=stop, run_manager=run_manager, **kwargs
+        )
+
+        # If using a real LLM (e.g. HuggingFace), the prompt template handles styling
+        base_type = getattr(self.base_llm, '_llm_type', '')
+        if base_type != 'extractive-summary-llm':
+            return raw_answer
+
+        # For ExtractiveSummaryLLM fallback, apply post-processing transformations
+        return self._transform(raw_answer)
+
+    def _transform(self, text: str) -> str:
+        if not text or text.startswith("No relevant"):
+            return text
+        if self.mode == "kid":
+            return self._kid_transform(text)
+        elif self.mode == "story":
+            return self._story_transform(text)
+        return self._adult_transform(text)
+
+    def _kid_transform(self, text: str) -> str:
+        """Make text kid-friendly with simple words and fun analogies."""
+        replacements = {
+            "regulation": "set of rules",
+            "Regulation": "Set of rules",
+            "compliance": "following the rules",
+            "Compliance": "Following the rules",
+            "organizations": "companies",
+            "Organizations": "Companies",
+            "organization": "company",
+            "Organization": "Company",
+            "processing": "using",
+            "personal data": "your personal info",
+            "data protection": "keeping your info safe",
+            "biometric data": "body info (like fingerprints!)",
+            "implementation": "setting things up",
+            "implement": "set up",
+            "jurisdiction": "country",
+            "breach": "leak",
+            "penalties": "punishments",
+            "consent": "permission",
+            "fundamental": "super important",
+            "principles": "rules",
+            "principle": "rule",
+            "legislation": "law",
+            "violation": "breaking the rules",
+            "violations": "breaking the rules",
+            "supervisory authority": "data police",
+            "transparency": "being open and honest",
+            "accountability": "being responsible",
+            "lawful basis": "a good reason",
+            "enforceable": "that must be followed",
+            "financial": "money-related",
+        }
+        result = text
+        for old, new in replacements.items():
+            result = result.replace(old, new)
+        prefix = "Imagine this - it's like a superhero story for your data! "
+        suffix = " Pretty cool, right? It's all about keeping people's secrets safe!"
+        result = prefix + result
+        if len(result) + len(suffix) < 550:
+            result += suffix
+        return result
+
+    def _adult_transform(self, text: str) -> str:
+        """Add practical real-life context to the answer."""
+        examples = {
+            "data protection": "Think about how your bank protects your account details - ",
+            "gdpr": "Like the privacy settings on your Netflix or Facebook account - ",
+            "consent": "Similar to accepting cookies on websites or app permissions - ",
+            "personal data": "This covers everything from your email to browsing history - ",
+            "biometric": "Like Face ID on your iPhone or fingerprint login at your bank - ",
+            "breach": "Similar to when companies get hacked and user data leaks - ",
+            "penalties": "Companies face massive fines, like when tech giants were fined billions - ",
+            "penalty": "Companies face massive fines, like when tech giants were fined billions - ",
+            "privacy by design": "Like how Apple builds privacy into iPhones from the start - ",
+            "rights": "Like how you can delete your Amazon history or download Google data - ",
+        }
+        prefix = ""
+        text_lower = text.lower()
+        for keyword, example in examples.items():
+            if keyword in text_lower:
+                prefix = example
+                break
+        if not prefix:
+            prefix = "In practical terms: "
+        return prefix + text
+
+    def _story_transform(self, text: str) -> str:
+        """Wrap text in a narrative format with characters and plot."""
+        intros = [
+            ("In 2018, European leaders gathered to face a digital crisis. They saw "
+             "that people's personal information was being collected everywhere - and "
+             "something had to change. "),
+            ("Picture a world where every click tells a story about you. In this "
+             "world, a group of determined lawmakers set out to protect citizens. "),
+            ("Once upon a time in the European Union, citizens grew worried about "
+             "their digital lives. Their governments listened, and a great plan "
+             "was set in motion. "),
+        ]
+        text_lower = text.lower()
+        if "2018" in text_lower or "regulation" in text_lower or "gdpr" in text_lower:
+            intro = intros[0]
+        elif "data" in text_lower or "personal" in text_lower:
+            intro = intros[1]
+        else:
+            intro = intros[2]
+        conclusion = " And so, the journey toward digital privacy continues to this day."
+        result = intro + text
+        if len(result) + len(conclusion) < 600:
+            result += conclusion
+        return result
+
+
+# --- Build Mode-Specific QA Chains ---
+storytelling_chains = {}
+for mode_name, config in storytelling_modes_config.items():
+    mode_key = mode_name.split()[0].lower()  # "kid", "adult", "story"
+    mode_llm = StorytellingLLM(base_llm=llm, mode=mode_key)
+    chain = RetrievalQA.from_chain_type(
+        llm=mode_llm,
+        chain_type="stuff",
+        retriever=retriever_basic,
+        return_source_documents=True,
+        chain_type_kwargs={"prompt": config["prompt"]}
+    )
+    storytelling_chains[mode_name] = chain
+
+print(f"\n✅ Created {len(storytelling_chains)} storytelling QA chains")
+
+# --- Test Same Questions in All 3 Modes ---
+storytelling_questions = [
+    "What is GDPR and why is it important?",
+    "What are the penalties for GDPR violations?",
+    "What is Privacy by Design?",
+]
+
+print(f"\n{'='*70}")
+print("🎭 STORYTELLING MODE COMPARISON")
+print(f"{'='*70}")
+
+comparison_results = {}
+for question in storytelling_questions:
+    comparison_results[question] = {}
+    print(f"\n{'─'*60}")
+    print(f"📌 Question: {question}")
+    print(f"{'─'*60}")
+
+    for mode_name, chain in storytelling_chains.items():
+        emoji = storytelling_modes_config[mode_name]["emoji"]
+        try:
+            result = chain.invoke({"query": question})
+            answer = result["result"].strip()
+            source_docs = result["source_documents"]
+            sources = [
+                f"{d.metadata.get('source_file', '?')} (p{d.metadata.get('page', '?')})"
+                for d in source_docs
+            ]
+            comparison_results[question][mode_name] = (answer, sources)
+
+            print(f"\n  {emoji} {mode_name}:")
+            print(f"     {answer[:250]}{'...' if len(answer) > 250 else ''}")
+            print(f"     Sources: {', '.join(sources[:2])}")
+        except Exception as e:
+            print(f"\n  {emoji} {mode_name}: Error - {e}")
+            comparison_results[question][mode_name] = (f"Error: {e}", [])
+
+print(f"\n{'='*70}")
+print("✅ All storytelling mode tests complete!")
+print(f"{'='*70}")
+
+# --- Generate Comparison Screenshot ---
+fig, ax = plt.subplots(figsize=(18, 22))
+ax.set_facecolor('#1a1a2e')
+fig.patch.set_facecolor('#16213e')
+ax.set_xlim(0, 10)
+ax.set_ylim(0, 12)
+ax.axis('off')
+
+ax.text(5, 11.7, 'Task 7: Storytelling Modes - Comparison',
+        fontsize=16, fontweight='bold', color='#e94560', ha='center',
+        fontfamily='monospace')
+
+y_pos = 11.3
+mode_label_colors = {
+    "Kid Mode": "#ff6b9d", "Adult Mode": "#4ecdc4", "Story Mode": "#ffe66d"
+}
+
+ax.text(0.2, y_pos,
+        "  Modes: 🧒 Kid (age 8-12)  |  👔 Adult (real-life examples)  |  📖 Story (narrative)",
+        fontsize=10, color='#00ff88', fontfamily='monospace')
+y_pos -= 0.4
+
+ax.text(0.2, y_pos,
+        f"  LLM: {model_name[:60]}  |  Retriever: Similarity (k=4)  |  Sources: ✅",
+        fontsize=9, color='#00ff88', fontfamily='monospace')
+y_pos -= 0.4
+
+ax.axhline(y=y_pos + 0.15, xmin=0.02, xmax=0.98, color='#e94560', linewidth=1.5)
+y_pos -= 0.25
+
+for question in storytelling_questions:
+    q_short = question[:70] + "..." if len(question) > 70 else question
+    ax.text(0.2, y_pos, f"  Q: {q_short}", fontsize=10, fontweight='bold',
+            color='#ffffff', fontfamily='monospace')
+    y_pos -= 0.35
+
+    for mode_name in ["Kid Mode", "Adult Mode", "Story Mode"]:
+        answer, sources = comparison_results[question].get(mode_name, ("N/A", []))
+        emoji = storytelling_modes_config[mode_name]["emoji"]
+        color = mode_label_colors[mode_name]
+
+        ax.text(0.2, y_pos, f"    {emoji} {mode_name}:", fontsize=9,
+                fontweight='bold', color=color, fontfamily='monospace')
+        y_pos -= 0.28
+
+        a_short = answer[:160] + "..." if len(answer) > 160 else answer
+        wrapped = textwrap.wrap(a_short, width=105)
+        for line in wrapped[:2]:
+            ax.text(0.2, y_pos, f"      {line}", fontsize=7.5, color='#cccccc',
+                    fontfamily='monospace')
+            y_pos -= 0.22
+
+        if sources:
+            src_str = ', '.join(sources[:2])
+            ax.text(0.2, y_pos, f"      Sources: {src_str}", fontsize=7,
+                    color='#666699', fontfamily='monospace')
+            y_pos -= 0.2
+
+        y_pos -= 0.05
+
+    ax.axhline(y=y_pos + 0.08, xmin=0.02, xmax=0.98, color='#444466', linewidth=0.5)
+    y_pos -= 0.18
+
+# Architecture footer
+ax.axhline(y=y_pos + 0.08, xmin=0.02, xmax=0.98, color='#e94560', linewidth=1)
+y_pos -= 0.3
+ax.text(5, y_pos,
+        "PDF → Chunks → Embeddings → ChromaDB → Retriever → Storytelling LLM → Styled Answer",
+        fontsize=9, color='#e94560', ha='center', fontfamily='monospace',
+        fontweight='bold')
+
+plt.tight_layout()
+plt.savefig(os.path.join(SCREENSHOTS_DIR, 'storytelling_comparison.png'),
+            dpi=150, bbox_inches='tight', facecolor=fig.get_facecolor())
+plt.close()
+print(f"\n✅ Screenshot saved: {SCREENSHOTS_DIR}/storytelling_comparison.png")
+
+
+# ============================================================
+# FINAL SUMMARY
+# ============================================================
 print("\n" + "=" * 70)
 print("📸 ALL SCREENSHOTS SAVED:")
 print("=" * 70)
 screenshots = [
-    "1. pdf_loader.png    - Task 1: Multi-PDF Document Loading",
-    "2. code_splitter.png - Task 2: Text Splitting",
-    "3. embedding.png     - Task 3: Document Embeddings",
-    "4. vectordb.png      - Task 4: Vector Database",
-    "5. retriever.png     - Task 5: Document Retriever",
-    "6. qabot.png         - Task 6: QA Bot with Hugging Face",
+    "1. pdf_loader.png              - Task 1: Multi-PDF Document Loading",
+    "2. code_splitter.png           - Task 2: Text Splitting",
+    "3. embedding.png               - Task 3: Document Embeddings",
+    "4. vectordb.png                - Task 4: Vector Database",
+    "5. retriever.png               - Task 5: Document Retriever",
+    "6. qabot.png                   - Task 6: QA Bot with Hugging Face",
+    "7. storytelling_comparison.png - Task 7: Storytelling Modes",
 ]
 for s in screenshots:
     print(f"   {s}")
 print("=" * 70)
 
 print("\n" + "=" * 70)
-print("🎉 PHASE 1 - DAY 1 COMPLETE!")
+print("🎉 PHASE 1 + PHASE 2 COMPLETE!")
 print("=" * 70)
-print("✅ Hugging Face LLM integrated")
-print("✅ Multi-PDF support added")
-print("✅ Source tracking enabled")
-print("✅ All 6 tasks completed")
+print("✅ Phase 1: Hugging Face LLM + Multi-PDF + Source Tracking")
+print("✅ Phase 2: Storytelling Modes (Kid / Adult / Story)")
+print("✅ All 7 tasks completed")
 print("✅ All screenshots generated")
+print("\n🎭 Storytelling Modes:")
+print("   🧒 Kid Mode   - Simple words, fun analogies, adventure-like")
+print("   👔 Adult Mode  - Real-life examples (Netflix, banking, etc.)")
+print("   📖 Story Mode  - Narrative format with characters & plot")
 print("\n📁 Your files:")
 print(f"   - Main script: quest_analytics_rag.py")
 print(f"   - API key: .env")
 print(f"   - PDFs folder: {PDFS_DIR}")
 print(f"   - Screenshots: {SCREENSHOTS_DIR}")
 print(f"   - Vector DB: {persist_directory}")
-print("\n🚀 TOMORROW (Day 2): Add storytelling modes (Kid/Adult/Story)!")
 print("=" * 70)

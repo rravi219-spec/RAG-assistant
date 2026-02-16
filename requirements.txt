@@ -24,3 +24,6 @@ numpy>=1.24.0
 
 # Optional: Pillow for image handling
 Pillow>=10.0.0
+
+# Web UI
+streamlit>=1.30.0

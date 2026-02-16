@@ -248,10 +248,6 @@ def load_existing_vectordb(embedding_model):
 
 def get_storytelling_chains(llm, retriever):
     """Build the three storytelling QA chains."""
-    try:
-        from langchain.chains import RetrievalQA
-    except ImportError:
-        from langchain_community.chains import RetrievalQA
     from langchain_core.prompts import PromptTemplate
     from langchain_core.language_models.llms import LLM as BaseLLMClass
     from typing import Any, Optional
@@ -387,16 +383,34 @@ def get_storytelling_chains(llm, retriever):
                 result += conclusion
             return result
 
+    # Simple retrieval QA chain (no dependency on langchain.chains) ----------
+    class SimpleRetrievalQA:
+        """Drop-in replacement for RetrievalQA that only needs langchain_core."""
+
+        def __init__(self, llm, retriever, prompt):
+            self._llm = llm
+            self._retriever = retriever
+            self._prompt = prompt
+
+        def invoke(self, inputs):
+            query = inputs["query"]
+            try:
+                docs = self._retriever.invoke(query)
+            except AttributeError:
+                docs = self._retriever.get_relevant_documents(query)
+            context = "\n\n".join(doc.page_content for doc in docs)
+            full_prompt = self._prompt.format(context=context, question=query)
+            answer = self._llm._call(full_prompt)
+            return {"result": answer, "source_documents": docs}
+
     # Build chains -----------------------------------------------------------
     chains = {}
     for mode_key in ("kid", "adult", "story"):
         mode_llm = StorytellingLLM(base_llm=llm, mode=mode_key)
-        chains[mode_key] = RetrievalQA.from_chain_type(
+        chains[mode_key] = SimpleRetrievalQA(
             llm=mode_llm,
-            chain_type="stuff",
             retriever=retriever,
-            return_source_documents=True,
-            chain_type_kwargs={"prompt": prompts[mode_key]},
+            prompt=prompts[mode_key],
         )
     return chains
 

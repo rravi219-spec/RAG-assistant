@@ -248,7 +248,10 @@ def load_existing_vectordb(embedding_model):
 
 def get_storytelling_chains(llm, retriever):
     """Build the three storytelling QA chains."""
-    from langchain.chains import RetrievalQA
+    try:
+        from langchain.chains import RetrievalQA
+    except ImportError:
+        from langchain_community.chains import RetrievalQA
     from langchain_core.prompts import PromptTemplate
     from langchain_core.language_models.llms import LLM as BaseLLMClass
     from typing import Any, Optional

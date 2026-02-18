@@ -8,10 +8,17 @@ Run with:  streamlit run app.py
 
 import os
 import sys
+import subprocess
 import time
 import shutil
 import tempfile
 from pathlib import Path
+
+# Ensure pypdf is available (Streamlit Cloud can silently drop packages)
+try:
+    import pypdf  # noqa: F401
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "pypdf"])
 
 import streamlit as st
 from dotenv import load_dotenv

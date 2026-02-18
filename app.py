@@ -28,7 +28,12 @@ CHROMA_DIR = os.path.join(BASE_DIR, "chroma_db")
 os.makedirs(PDFS_DIR, exist_ok=True)
 os.makedirs(CHROMA_DIR, exist_ok=True)
 
+# Support both .env (local) and st.secrets (Streamlit Cloud)
 HF_API_KEY = os.getenv("HUGGINGFACE_API_KEY", "")
+if not HF_API_KEY:
+    HF_API_KEY = st.secrets.get("HUGGINGFACE_API_KEY", "")
+    if HF_API_KEY:
+        os.environ["HUGGINGFACE_API_KEY"] = HF_API_KEY
 
 # ---------------------------------------------------------------------------
 # Page config (must be first Streamlit call)

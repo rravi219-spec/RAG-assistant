@@ -2,8 +2,9 @@
 chroma_db/
 pdfs/
 
-# Environment
+# Environment / secrets
 .env
+.streamlit/secrets.toml
 
 # Python
 __pycache__/

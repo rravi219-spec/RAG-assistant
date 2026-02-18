@@ -1,227 +1,197 @@
-# Quest Analytics RAG Assistant - Phase 1 Setup Guide
+# Quest Analytics RAG Assistant
 
-## 🚀 Welcome, Broski!
+AI-Powered Document Analysis with Storytelling Modes — built with LangChain, ChromaDB, and Streamlit.
 
-You've just upgraded your RAG system with:
-- ✅ Hugging Face LLM integration (FLAN-T5)
-- ✅ Multi-PDF support
-- ✅ Secure API key management
-- ✅ Better source tracking
-- ✅ All 6 original tasks preserved!
+## Live Streamlit App
 
----
+![Streamlit App](screenshots/streamlit_app_full.png)
 
-## 📋 Prerequisites
-
-Make sure you have Python 3.8+ installed.
+The web interface features a dark-themed UI with PDF upload, three storytelling modes (Kid, Adult, Story), and real-time document Q&A with source attribution.
 
 ---
 
-## 🔧 Installation Steps
+## RAG Pipeline Screenshots
 
-### Step 1: Install Required Packages
+### Task 1: Load Documents — Multi-PDF Support
 
-Run this command to install all dependencies:
+![PDF Loader](screenshots/pdf_loader.png)
+
+Loads PDFs using PyPDFLoader with source tracking enabled. Supports multiple documents from the `pdfs/` directory.
+
+---
+
+### Task 2: Text Splitting Techniques
+
+![Code Splitter](screenshots/code_splitter.png)
+
+Splits documents into 89 chunks (1000 chars each, 200 overlap) using RecursiveCharacterTextSplitter with smart separators.
+
+---
+
+### Task 3: Document Embeddings
+
+![Embeddings](screenshots/embedding.png)
+
+Generates 384-dimensional embeddings using all-MiniLM-L6-v2 (ONNX Runtime). The heatmap shows embedding vector patterns across query and document chunks.
+
+---
+
+### Task 4: Vector Database — ChromaDB
+
+![Vector DB](screenshots/vectordb.png)
+
+Stores 178 document chunks in a persistent ChromaDB collection. Similarity search returns ranked results with distance scores and source page numbers.
+
+---
+
+### Task 5: Document Retriever
+
+![Retriever](screenshots/retriever.png)
+
+Supports three retrieval strategies: Similarity Search (k=4), MMR (Max Marginal Relevance), and Score Threshold filtering. Results include source file and page references.
+
+---
+
+### Task 6: QA Bot — Hugging Face LLM
+
+![QA Bot](screenshots/qabot.png)
+
+Answers questions using a RetrievalQA chain with source attribution. Uses FLAN-T5 via Hugging Face API with an extractive fallback LLM.
+
+---
+
+### Task 7: Storytelling Modes — Comparison
+
+![Storytelling Comparison](screenshots/storytelling_comparison.png)
+
+Three explanation styles for every answer:
+- **Kid Mode** — Simple words, fun analogies, superhero references (ages 8-12)
+- **Adult Mode** — Real-life examples (Netflix, banking, iPhone privacy)
+- **Story Mode** — Narrative format with historical context and characters
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.8+
+- pip
+
+### 1. Clone the repository
 
 ```bash
-pip install langchain langchain-community langchain-core chromadb sentence-transformers python-dotenv huggingface-hub matplotlib numpy
+git clone https://github.com/rravi219/RAG-assistant.git
+cd RAG-assistant
 ```
 
-OR use this shorter version:
+### 2. Install dependencies
 
 ```bash
-pip install langchain langchain-community langchain-core chromadb sentence-transformers python-dotenv huggingface-hub matplotlib numpy --break-system-packages
+pip install -r requirements.txt
 ```
 
-Note: The `--break-system-packages` flag might be needed on some systems.
+On some systems you may need:
 
----
-
-### Step 2: Set Up Your PDFs Folder
-
-**Option A: Use the pdfs/ folder (Recommended)**
-
-1. Create a folder called `pdfs` in your project directory
-2. Move your `GDPR-Framework.pdf` into the `pdfs/` folder
-3. Add any other research PDFs you want to process
-
-```
-your_project/
-├── quest_analytics_rag.py
-├── .env
-└── pdfs/
-    ├── GDPR-Framework.pdf
-    ├── research_paper_2.pdf
-    └── research_paper_3.pdf
+```bash
+pip install -r requirements.txt --break-system-packages
 ```
 
-**Option B: Keep GDPR-Framework.pdf in current directory**
+### 3. Set up environment variables
 
-The script will automatically detect it if it's in the same folder as the script.
-
----
-
-### Step 3: Verify Your .env File
-
-Make sure your `.env` file contains:
+The `.env` file should contain:
 
 ```
-HUGGINGFACE_API_KEY=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
+HUGGINGFACE_API_KEY=your_huggingface_api_key_here
 HF_MODEL_NAME=google/flan-t5-base
 ```
 
-This is already created for you! ✅
+### 4. Run the Streamlit web app
 
----
+```bash
+streamlit run app.py
+```
 
-## ▶️ Running the Script
+This opens the web UI at **http://localhost:8501** in your default browser.
 
-Simply run:
+### 5. Run the CLI pipeline (optional)
+
+To generate screenshots and run all 7 tasks from the terminal:
 
 ```bash
 python quest_analytics_rag.py
 ```
 
-OR:
-
-```bash
-python3 quest_analytics_rag.py
-```
-
 ---
 
-## 📸 What to Expect
-
-The script will:
-
-1. ✅ Load all PDFs from the `pdfs/` folder (or fallback to GDPR-Framework.pdf)
-2. ✅ Split documents into chunks
-3. ✅ Create embeddings
-4. ✅ Build ChromaDB vector database
-5. ✅ Set up retriever
-6. ✅ Initialize Hugging Face LLM (FLAN-T5)
-7. ✅ Test QA Bot with sample questions
-8. ✅ Generate 6 screenshots in `screenshots/` folder
-
-**Total runtime: ~2-5 minutes** (depending on number of PDFs)
-
----
-
-## 📁 Output Files
-
-After running, you'll have:
+## Project Structure
 
 ```
-your_project/
-├── quest_analytics_rag.py    (Main script)
-├── .env                       (API key - keep secret!)
-├── pdfs/                      (Your research papers)
-│   └── GDPR-Framework.pdf
-├── screenshots/               (Generated visualizations)
+RAG-assistant/
+├── app.py                    # Streamlit web interface
+├── quest_analytics_rag.py    # CLI pipeline (generates screenshots)
+├── requirements.txt          # Python dependencies
+├── .env                      # API keys (keep secret)
+├── GDPR-Framework.pdf        # Sample research document
+├── pdfs/                     # Additional PDF documents
+├── screenshots/              # Generated pipeline visualizations
 │   ├── pdf_loader.png
 │   ├── code_splitter.png
 │   ├── embedding.png
 │   ├── vectordb.png
 │   ├── retriever.png
-│   └── qabot.png
-└── chroma_db/                 (Vector database storage)
+│   ├── qabot.png
+│   └── storytelling_comparison.png
+└── chroma_db/                # Persistent vector database
 ```
 
 ---
 
-## 🎯 Testing Your Setup
+## Troubleshooting
 
-After running the script, check:
+### Windows: `streamlit run app.py` does nothing or times out
 
-1. ✅ All 6 screenshots are in `screenshots/` folder
-2. ✅ Terminal shows "PHASE 1 - DAY 1 COMPLETE!"
-3. ✅ QA Bot answered 5 test questions
-4. ✅ Source tracking shows which PDF/page answered each question
+1. Make sure all packages are installed — run `pip install -r requirements.txt` first
+2. Check if another process is using port 8501:
+   ```
+   netstat -ano | findstr 8501
+   ```
+3. Try specifying the port explicitly:
+   ```bash
+   streamlit run app.py --server.port 8502
+   ```
+4. If the browser doesn't open automatically, manually navigate to `http://localhost:8501`
+5. Run with Python directly to see any import errors:
+   ```bash
+   python -c "import streamlit; import langchain; import chromadb; print('All imports OK')"
+   ```
 
----
+### "ModuleNotFoundError"
 
-## 🐛 Troubleshooting
+Install the missing package:
 
-### Issue: "HUGGINGFACE_API_KEY not found"
-**Solution:** Make sure `.env` file is in the same directory as the script
-
-### Issue: "No PDF files found"
-**Solution:** 
-- Create `pdfs/` folder
-- Move GDPR-Framework.pdf (or other PDFs) into it
-- OR keep GDPR-Framework.pdf in the main directory
-
-### Issue: "ModuleNotFoundError"
-**Solution:** Install missing package:
 ```bash
-pip install [package_name] --break-system-packages
+pip install <package_name>
 ```
 
-### Issue: Hugging Face API timeout
-**Solution:** 
-- The script has a fallback extractive LLM
-- It will automatically use fallback if Hugging Face fails
-- Check your internet connection
-- Verify API key is correct
+### "No PDF files found"
+
+- Place PDF files in the `pdfs/` folder, or keep `GDPR-Framework.pdf` in the project root
+
+### Hugging Face API timeout
+
+- The app has a built-in fallback extractive LLM that works offline
+- Check your internet connection if you want to use the Hugging Face API
 
 ---
 
-## 🎨 What Changed from Original Code?
+## Tech Stack
 
-### NEW Features:
-1. ✅ **Multi-PDF Support** - Load multiple research papers at once
-2. ✅ **Hugging Face LLM** - Real AI model instead of extractive summarization
-3. ✅ **Source Tracking** - Know which PDF answered each question
-4. ✅ **Organized Folders** - Clean file structure (pdfs/, screenshots/)
-5. ✅ **Secure API Keys** - Stored in .env file, not in code
-6. ✅ **Error Handling** - Fallback mechanisms if things fail
-
-### Preserved:
-- ✅ All 6 original tasks
-- ✅ All 6 screenshots
-- ✅ Same ChromaDB setup
-- ✅ Same embedding model (ONNX)
-- ✅ Same code structure
-
----
-
-## 🚀 Next Steps (Tomorrow - Day 2)
-
-Phase 2 will add:
-- 🧒 **Kid Mode** - Explain research like you're 5
-- 👨‍💼 **Adult Mode** - Real-life examples and applications
-- 📖 **Story Mode** - Turn research into engaging narratives
-- 🎭 **Mode Selector** - Toggle between explanation styles
-
----
-
-## 💡 Tips
-
-1. **Start small:** Test with 1-2 PDFs first
-2. **Check screenshots:** They show you what's happening at each step
-3. **Read terminal output:** It's very detailed and helpful
-4. **Try different questions:** Modify the `qa_questions` list in the code
-
----
-
-## 🎉 Congrats, Broski!
-
-You now have a **production-grade RAG system** with:
-- Real LLM integration
-- Multi-document support
-- Source attribution
-- Professional screenshots
-
-**Tomorrow we make it MAGICAL with storytelling modes!** ✨
-
----
-
-## 📞 Need Help?
-
-If you run into issues:
-1. Check the terminal output for error messages
-2. Verify all files are in the right locations
-3. Make sure all packages are installed
-4. Check that your API key is valid
-
-**Let's build something LEGENDARY!** 🔥
+| Component | Technology |
+|-----------|-----------|
+| Web UI | Streamlit |
+| LLM | Hugging Face FLAN-T5 (+ extractive fallback) |
+| Embeddings | all-MiniLM-L6-v2 (ONNX) |
+| Vector DB | ChromaDB |
+| Framework | LangChain |
+| PDF Parsing | PyPDF |

@@ -1,14 +1,10 @@
 # Quest Analytics RAG Assistant - Required Packages
 # Install with: pip install -r requirements.txt
 
-# Use CPU-only PyTorch (keeps Streamlit Cloud builds under memory limits)
---extra-index-url https://download.pytorch.org/whl/cpu
-torch
-
 # Web UI
 streamlit>=1.30.0
 
-# PDF Parsing (install early to avoid silent failures)
+# PDF Parsing
 pypdf>=3.0.0
 
 # Core LangChain (versions must be compatible — do NOT mix 0.0.x with 0.3.x+)
@@ -17,11 +13,8 @@ langchain-community>=0.3.0
 langchain-core>=0.3.0
 langchain-text-splitters>=0.3.0
 
-# Vector Database
+# Vector Database (includes ONNX-based all-MiniLM-L6-v2 embeddings)
 chromadb>=0.4.22
-
-# Embeddings
-sentence-transformers>=2.2.2
 
 # LLM Integration
 huggingface-hub>=0.20.0

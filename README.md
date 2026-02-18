@@ -2,6 +2,12 @@
 
 AI-Powered Document Analysis with Storytelling Modes — built with LangChain, ChromaDB, and Streamlit.
 
+## Live Streamlit App
+
+![Streamlit App](screenshots/streamlit_app_full.png)
+
+The web interface features a dark-themed UI with PDF upload, three storytelling modes (Kid, Adult, Story), and real-time document Q&A with source attribution.
+
 ---
 
 ## RAG Pipeline Screenshots

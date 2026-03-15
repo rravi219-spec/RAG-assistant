@@ -456,6 +456,110 @@ def load_pdf_documents(pdf_paths):
 
 
 # ===================================================================
+# Incremental PDF loading helpers
+# ===================================================================
+
+def get_all_pdfs_in_folder():
+    """Get set of all PDF filenames from pdfs/ and project root."""
+    pdf_paths = list_loaded_pdfs()
+    return {p.name for p in pdf_paths}
+
+
+def get_processed_pdfs(vectorstore):
+    """Get set of PDF filenames already indexed in the vector database."""
+    if vectorstore is None:
+        return set()
+    try:
+        collection = vectorstore._collection
+        all_metadata = collection.get(include=["metadatas"])
+        processed = set()
+        for metadata in all_metadata.get("metadatas", []):
+            if metadata and "source_file" in metadata:
+                processed.add(metadata["source_file"])
+        return processed
+    except Exception:
+        return set()
+
+
+def get_vector_db_stats(vectorstore):
+    """Return dict with total_chunks, num_documents, and document list."""
+    if vectorstore is None:
+        return {"total_chunks": 0, "num_documents": 0, "documents": []}
+    try:
+        collection = vectorstore._collection
+        total = collection.count()
+        all_metadata = collection.get(include=["metadatas"])
+        doc_chunks = {}
+        for metadata in all_metadata.get("metadatas", []):
+            if metadata and "source_file" in metadata:
+                name = metadata["source_file"]
+                doc_chunks[name] = doc_chunks.get(name, 0) + 1
+        docs = [{"name": k, "chunks": v} for k, v in sorted(doc_chunks.items())]
+        return {
+            "total_chunks": total,
+            "num_documents": len(doc_chunks),
+            "documents": docs,
+        }
+    except Exception:
+        return {"total_chunks": 0, "num_documents": 0, "documents": []}
+
+
+def process_new_pdfs_only(vectorstore, embedding_model):
+    """Process only NEW PDFs not yet in the database. Returns (vectorstore, bool)."""
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+    all_pdfs = get_all_pdfs_in_folder()
+    processed_pdfs = get_processed_pdfs(vectorstore)
+    new_pdfs = all_pdfs - processed_pdfs
+
+    if not new_pdfs:
+        st.sidebar.info(f"✅ All {len(all_pdfs)} PDF(s) already processed!")
+        return vectorstore, False
+
+    st.sidebar.info(f"🆕 Found {len(new_pdfs)} new PDF(s) to process...")
+
+    # Resolve full paths for new PDFs
+    new_paths = []
+    for pdf_path in list_loaded_pdfs():
+        if pdf_path.name in new_pdfs:
+            new_paths.append(pdf_path)
+
+    if not new_paths:
+        return vectorstore, False
+
+    docs, meta = load_pdf_documents(new_paths)
+    if not docs:
+        st.sidebar.warning("⚠️ No content extracted from new PDFs.")
+        return vectorstore, False
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1000,
+        chunk_overlap=200,
+        separators=["\n\n", "\n", ". ", " ", ""],
+    )
+    chunks = splitter.split_documents(docs)
+
+    total_new = 0
+    for pdf_name in new_pdfs:
+        pdf_chunks = [c for c in chunks if c.metadata.get("source_file") == pdf_name]
+        if pdf_chunks:
+            try:
+                vectorstore.add_documents(pdf_chunks)
+                total_new += len(pdf_chunks)
+                st.sidebar.success(f"✅ {pdf_name}: {len(pdf_chunks)} chunks added")
+            except Exception as e:
+                st.sidebar.error(f"❌ {pdf_name}: {e}")
+
+    if total_new > 0:
+        st.sidebar.success(f"🎉 Total: {total_new} new chunks added to database!")
+
+    # Update cached chunk count
+    st.session_state["chunk_count"] = vectorstore._collection.count()
+
+    return vectorstore, total_new > 0
+
+
+# ===================================================================
 # Sidebar: Document Library & Upload
 # ===================================================================
 
@@ -504,10 +608,34 @@ with st.sidebar:
 
     st.markdown("---")
 
+    # --- Database Statistics ---
+    st.markdown("### 📊 Database Stats")
+    if "vectordb" in st.session_state:
+        stats = get_vector_db_stats(st.session_state["vectordb"])
+        stat_cols = st.columns(2)
+        with stat_cols[0]:
+            st.metric("Total Chunks", stats["total_chunks"])
+        with stat_cols[1]:
+            st.metric("Documents", stats["num_documents"])
+        if stats["documents"]:
+            st.markdown("**Indexed documents:**")
+            for doc in stats["documents"]:
+                st.markdown(
+                    f"&nbsp;&nbsp;📄 {doc['name']} — `{doc['chunks']}` chunks"
+                )
+    else:
+        st.caption("No database loaded yet.")
+
+    st.markdown("---")
+
     # Rebuild button
     if st.button("🔄 Rebuild Vector Database", use_container_width=True):
         for key in ("vectordb", "chains", "chunk_count"):
             st.session_state.pop(key, None)
+        # Clear the persisted chroma_db so it rebuilds from scratch
+        if os.path.exists(CHROMA_DIR):
+            shutil.rmtree(CHROMA_DIR)
+            os.makedirs(CHROMA_DIR, exist_ok=True)
         st.rerun()
 
     st.markdown("---")
@@ -551,7 +679,7 @@ if "llm" not in st.session_state:
 llm = st.session_state["llm"]
 model_label = st.session_state["model_label"]
 
-# --- Vector DB ---
+# --- Vector DB (with incremental PDF loading) ---
 if "vectordb" not in st.session_state:
     pdf_paths = list_loaded_pdfs()
     if pdf_paths:
@@ -567,6 +695,16 @@ if "vectordb" not in st.session_state:
                     vdb, count = build_vectordb(docs, embedding_model)
                     st.session_state["vectordb"] = vdb
                     st.session_state["chunk_count"] = count
+
+# Check for new PDFs every time (even if DB already loaded)
+if "vectordb" in st.session_state and list_loaded_pdfs():
+    vdb, new_added = process_new_pdfs_only(
+        st.session_state["vectordb"], embedding_model
+    )
+    st.session_state["vectordb"] = vdb
+    if new_added:
+        # Rebuild QA chains with updated retriever
+        st.session_state.pop("chains", None)
 
 # --- QA Chains ---
 if "chains" not in st.session_state and "vectordb" in st.session_state:
